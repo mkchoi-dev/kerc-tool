@@ -5,6 +5,8 @@
 // @description  지도 핀 드래그/올가미/우클릭 선택으로 배출예약 배차 작업을 보조합니다.
 // @match        https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
 // @include      https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
+// @downloadURL  https://raw.githubusercontent.com/mkchoi-dev/kerc-tool/main/kerc-helper.user.js
+// @updateURL    https://raw.githubusercontent.com/mkchoi-dev/kerc-tool/main/kerc-helper.user.js
 // @run-at       document-start
 // @grant        unsafeWindow
 // ==/UserScript==
