@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         배출예약시스템 배차 Tool
 // @namespace    kerc-helper
-// @version      1.0.0
+// @version      1.0.1
+// @author       myungkwon Choi
 // @description  지도 핀 드래그/올가미/우클릭 선택으로 배출예약 배차 작업을 보조합니다.
 // @match        https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
 // @include      https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
