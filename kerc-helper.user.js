@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         배출예약시스템 배차 Tool
 // @namespace    kerc-helper
-// @version      1.0.1
+// @version      1.0.2
 // @author       myungkwon Choi
 // @description  지도 핀 드래그/올가미/우클릭 선택으로 배출예약 배차 작업을 보조합니다.
 // @match        https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
@@ -20,9 +20,12 @@
   const COORD_PRECISION = 7;
   const SHORTCUT_STORAGE_KEY = 'kercHelper.batchDispatchShortcut';
   const TONG_DISPATCH_SHORTCUT_STORAGE_KEY = 'kercHelper.tongDispatchShortcut';
+  const CLEAR_SHORTCUT_STORAGE_KEY = 'kercHelper.clearShortcut';
+  const SELECTED_COLOR_STORAGE_KEY = 'kercHelper.selectedColor';
   // 회사 CI 이미지를 표시하려면 여기에 이미지 URL을 넣으세요.
   const CI_IMAGE_URL = 'https://i.postimg.cc/vTXMBjMF/02-gug-yeongmun-jwauhyeong.png';
   const RIGHT_CLICK_POINT_THRESHOLD = 5;
+  const DEFAULT_SELECTED_COLOR = '#ff0000';
 
   const coordVisitMap = new Map();
   const coordCustomMap = new Map();
@@ -44,6 +47,15 @@
     return localStorage.getItem(TONG_DISPATCH_SHORTCUT_STORAGE_KEY) || 'F8';
   }
 
+  function getClearShortcut() {
+    return localStorage.getItem(CLEAR_SHORTCUT_STORAGE_KEY) || 'QSE';
+  }
+
+  function getSelectedColor() {
+    const color = localStorage.getItem(SELECTED_COLOR_STORAGE_KEY) || DEFAULT_SELECTED_COLOR;
+    return /^#[0-9a-f]{6}$/i.test(color) ? color : DEFAULT_SELECTED_COLOR;
+  }
+
   function setBatchDispatchShortcut(value) {
     localStorage.setItem(SHORTCUT_STORAGE_KEY, value);
   }
@@ -52,12 +64,27 @@
     localStorage.setItem(TONG_DISPATCH_SHORTCUT_STORAGE_KEY, value);
   }
 
+  function setClearShortcut(value) {
+    localStorage.setItem(CLEAR_SHORTCUT_STORAGE_KEY, value);
+  }
+
+  function setSelectedColor(value) {
+    const color = String(value || '').trim();
+    localStorage.setItem(
+      SELECTED_COLOR_STORAGE_KEY,
+      /^#[0-9a-f]{6}$/i.test(color) ? color : DEFAULT_SELECTED_COLOR
+    );
+  }
+
   function getShortcutLabel(value) {
     const labels = {
       F2: 'F2',
       F4: 'F4',
       F8: 'F8',
       F9: 'F9',
+      F6: 'F6',
+      F7: 'F7',
+      QSE: 'QSE',
       CtrlEnter: 'Ctrl+Enter'
     };
 
@@ -697,10 +724,14 @@
             <option value="rect">블록 드래그</option>
             <option value="lasso">올가미</option>
           </select>
+          <label for="kerc-helper-selected-color" style="display:block;margin-bottom:4px;color:#475569;font-size:12px;font-weight:700;">선택 핀 강조 색상</label>
+          <input id="kerc-helper-selected-color" type="color" value="${getSelectedColor()}" style="width:100%;height:30px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;margin-bottom:8px;padding:2px 4px;">
           <label for="kerc-helper-shortcut" style="display:block;margin-bottom:4px;color:#475569;font-size:12px;font-weight:700;">일괄배차 단축키</label>
           <select id="kerc-helper-shortcut" style="width:100%;height:30px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;">
             <option value="F2">F2</option>
             <option value="F4">F4</option>
+            <option value="F6">F6</option>
+            <option value="F7">F7</option>
             <option value="F8">F8</option>
             <option value="F9">F9</option>
             <option value="CtrlEnter">Ctrl+Enter</option>
@@ -709,6 +740,19 @@
           <select id="kerc-helper-tong-shortcut" style="width:100%;height:30px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;">
             <option value="F2">F2</option>
             <option value="F4">F4</option>
+            <option value="F6">F6</option>
+            <option value="F7">F7</option>
+            <option value="F8">F8</option>
+            <option value="F9">F9</option>
+            <option value="CtrlEnter">Ctrl+Enter</option>
+          </select>
+          <label for="kerc-helper-clear-shortcut" style="display:block;margin:8px 0 4px;color:#475569;font-size:12px;font-weight:700;">초기화 단축키</label>
+          <select id="kerc-helper-clear-shortcut" style="width:100%;height:30px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;">
+            <option value="QSE">QSE</option>
+            <option value="F2">F2</option>
+            <option value="F4">F4</option>
+            <option value="F6">F6</option>
+            <option value="F7">F7</option>
             <option value="F8">F8</option>
             <option value="F9">F9</option>
             <option value="CtrlEnter">Ctrl+Enter</option>
@@ -791,11 +835,11 @@
 
       @keyframes kercMarkerPulse {
         from {
-          filter: drop-shadow(0 0 3px rgba(255,0,0,0.35));
+          filter: drop-shadow(0 0 3px var(--kerc-selected-color, #ff0000));
           opacity: 0.9;
         }
         to {
-          filter: drop-shadow(0 0 5px rgba(255,0,0,0.6));
+          filter: drop-shadow(0 0 5px var(--kerc-selected-color, #ff0000));
           opacity: 1;
         }
       }
@@ -808,7 +852,7 @@
 
       .kerc-selected-marker-tint {
         position: absolute !important;
-        background: #ff0000 !important;
+        background: var(--kerc-selected-color, #ff0000) !important;
         pointer-events: none !important;
         z-index: 999998 !important;
         -webkit-mask-repeat: no-repeat !important;
@@ -827,11 +871,11 @@
       .kerc-selected-overlap {
         box-shadow:
           0 0 0 4px rgba(255,255,255,0.95),
-          0 0 0 8px rgba(255,0,0,0.65),
-          0 0 16px rgba(255,0,0,0.9) !important;
-        outline: 3px solid #ff0000 !important;
+          0 0 0 8px var(--kerc-selected-color, #ff0000),
+          0 0 16px var(--kerc-selected-color, #ff0000) !important;
+        outline: 3px solid var(--kerc-selected-color, #ff0000) !important;
         color: #ffffff !important;
-        background: #ff0000 !important;
+        background: var(--kerc-selected-color, #ff0000) !important;
         opacity: 1 !important;
       }
     `;
@@ -844,12 +888,15 @@
     const settingsBox = panel.querySelector('#kerc-helper-settings-box');
     const ciImg = panel.querySelector('#kerc-helper-ci');
     const selectionModeSelect = panel.querySelector('#kerc-helper-selection-mode');
+    const selectedColorInput = panel.querySelector('#kerc-helper-selected-color');
     const shortcutSelect = panel.querySelector('#kerc-helper-shortcut');
     const tongShortcutSelect = panel.querySelector('#kerc-helper-tong-shortcut');
+    const clearShortcutSelect = panel.querySelector('#kerc-helper-clear-shortcut');
     const shortcutLabelEl = panel.querySelector('#kerc-helper-shortcut-label');
     const tongShortcutLabelEl = panel.querySelector('#kerc-helper-tong-shortcut-label');
     const openButton = panel.querySelector('#kerc-helper-open');
     const tongButton = panel.querySelector('#kerc-helper-tong');
+    const clearButton = panel.querySelector('#kerc-helper-clear');
     let isPanelCollapsed = false;
 
     function updateCiUi() {
@@ -862,6 +909,13 @@
         ciImg.removeAttribute('src');
         ciImg.style.display = 'none';
       }
+    }
+
+    function updateSelectedColorUi() {
+      const color = getSelectedColor();
+      panel.style.setProperty('--kerc-selected-color', color);
+      document.documentElement.style.setProperty('--kerc-selected-color', color);
+      selectedColorInput.value = color;
     }
 
     function updateShortcutUi() {
@@ -877,6 +931,11 @@
       tongShortcutSelect.value = tongShortcut;
       tongShortcutLabelEl.textContent = tongLabel;
       tongButton.textContent = `통배차(${tongLabel})`;
+
+      const clearShortcut = getClearShortcut();
+      const clearLabel = getShortcutLabel(clearShortcut);
+      clearShortcutSelect.value = clearShortcut;
+      clearButton.textContent = `초기화(${clearLabel})`;
     }
 
     function setPanelCollapsed(collapsed) {
@@ -892,6 +951,7 @@
     }
 
     updateCiUi();
+    updateSelectedColorUi();
     updateShortcutUi();
 
     setInterval(() => {
@@ -1861,6 +1921,14 @@
         log('선택 방식 변경:', selectionMode === 'lasso' ? '올가미' : '블록');
       });
     }
+    selectedColorInput.addEventListener('input', () => {
+      setSelectedColor(selectedColorInput.value);
+      updateSelectedColorUi();
+      refreshSelectionVisuals();
+    });
+    selectedColorInput.addEventListener('change', () => {
+      log('선택 핀 강조 색상 변경:', getSelectedColor());
+    });
     shortcutSelect.addEventListener('change', () => {
       setBatchDispatchShortcut(shortcutSelect.value);
       updateShortcutUi();
@@ -1870,6 +1938,11 @@
       setTongDispatchShortcut(tongShortcutSelect.value);
       updateShortcutUi();
       log('통배차 단축키 변경:', getShortcutLabel(tongShortcutSelect.value));
+    });
+    clearShortcutSelect.addEventListener('change', () => {
+      setClearShortcut(clearShortcutSelect.value);
+      updateShortcutUi();
+      log('초기화 단축키 변경:', getShortcutLabel(clearShortcutSelect.value));
     });
 
     function installMapVisualRefreshHooks() {
@@ -1941,6 +2014,7 @@
 
       function runQseClearShortcut(event) {
         if (event.type !== 'keydown') return;
+        if (getClearShortcut() !== 'QSE') return;
         if (event.ctrlKey || event.altKey || event.metaKey) return;
         if (isTextEditing()) return;
 
@@ -1979,8 +2053,10 @@
       async function runShortcut(event) {
         const isTongShortcut = isConfiguredTongShortcut(event);
         const isBatchShortcut = isConfiguredBatchShortcut(event);
+        const clearShortcut = getClearShortcut();
+        const isClearShortcut = clearShortcut !== 'QSE' && isShortcutEvent(event, clearShortcut);
 
-        if (!isTongShortcut && !isBatchShortcut) return;
+        if (!isTongShortcut && !isBatchShortcut && !isClearShortcut) return;
 
         if (isBatchDispatchModalOpen()) {
           log('단축키 무시: 일괄배차 모달이 이미 열려 있음');
@@ -1995,6 +2071,19 @@
         const now = Date.now();
         if (now - lastRunAt < 600) return;
         lastRunAt = now;
+
+        if (isClearShortcut) {
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (typeof event.stopImmediatePropagation === 'function') {
+            event.stopImmediatePropagation();
+          }
+
+          clearSelection();
+          log(`${getShortcutLabel(clearShortcut)} 초기화 단축키 실행`);
+          return;
+        }
 
         const btn = isTongShortcut
           ? document.querySelector('#kerc-helper-tong')
