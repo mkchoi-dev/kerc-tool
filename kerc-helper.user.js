@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         배출예약시스템 배차 Tool
 // @namespace    kerc-helper
-// @version      1.0.2
+// @version      1.0.3
 // @author       myungkwon Choi
 // @description  지도 핀 드래그/올가미/우클릭 선택으로 배출예약 배차 작업을 보조합니다.
 // @match        https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
@@ -77,6 +77,9 @@
   }
 
   function getShortcutLabel(value) {
+    if (!value) return '설정 안 됨';
+    if (value === 'CtrlEnter') return 'Ctrl+Enter';
+
     const labels = {
       F2: 'F2',
       F4: 'F4',
@@ -88,31 +91,63 @@
       CtrlEnter: 'Ctrl+Enter'
     };
 
-    return labels[value] || labels.F2;
+    return labels[value] || String(value);
+  }
+
+  function normalizeShortcutValue(value) {
+    if (value === 'CtrlEnter') return 'Ctrl+Enter';
+    return String(value || '').trim();
+  }
+
+  function getShortcutFromEvent(event) {
+    const key = String(event.key || '');
+    const code = String(event.code || '');
+
+    if (
+      key === 'Control' ||
+      key === 'Shift' ||
+      key === 'Alt' ||
+      key === 'Meta' ||
+      code === 'ControlLeft' ||
+      code === 'ControlRight' ||
+      code === 'ShiftLeft' ||
+      code === 'ShiftRight' ||
+      code === 'AltLeft' ||
+      code === 'AltRight' ||
+      code === 'MetaLeft' ||
+      code === 'MetaRight'
+    ) {
+      return null;
+    }
+
+    let mainKey = '';
+
+    if (/^F([1-9]|1[0-2])$/.test(key)) {
+      mainKey = key;
+    } else if (/^Key[A-Z]$/.test(code)) {
+      mainKey = code.replace('Key', '');
+    } else if (/^Digit[0-9]$/.test(code)) {
+      mainKey = code.replace('Digit', '');
+    } else if (key === ' ') {
+      mainKey = 'Space';
+    } else if (key.length === 1) {
+      mainKey = key.toUpperCase();
+    } else {
+      mainKey = key;
+    }
+
+    const parts = [];
+    if (event.ctrlKey) parts.push('Ctrl');
+    if (event.altKey) parts.push('Alt');
+    if (event.shiftKey) parts.push('Shift');
+    if (event.metaKey) parts.push('Meta');
+    parts.push(mainKey);
+
+    return parts.join('+');
   }
 
   function isShortcutEvent(event, shortcut) {
-    if (shortcut === 'CtrlEnter') {
-      return (
-        event.ctrlKey &&
-        !event.altKey &&
-        !event.metaKey &&
-        (event.key === 'Enter' || event.code === 'Enter' || event.keyCode === 13 || event.which === 13)
-      );
-    }
-
-    return (
-      !event.ctrlKey &&
-      !event.altKey &&
-      !event.metaKey &&
-      (
-        event.key === shortcut ||
-        event.code === shortcut ||
-        event.keyCode === Number(shortcut.replace('F', '')) + 111 ||
-        event.which === Number(shortcut.replace('F', '')) + 111 ||
-        event.keyIdentifier === shortcut
-      )
-    );
+    return getShortcutFromEvent(event) === normalizeShortcutValue(shortcut);
   }
 
   function isConfiguredBatchShortcut(event) {
@@ -727,36 +762,12 @@
           <label for="kerc-helper-selected-color" style="display:block;margin-bottom:4px;color:#475569;font-size:12px;font-weight:700;">선택 핀 강조 색상</label>
           <input id="kerc-helper-selected-color" type="color" value="${getSelectedColor()}" style="width:100%;height:30px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;margin-bottom:8px;padding:2px 4px;">
           <label for="kerc-helper-shortcut" style="display:block;margin-bottom:4px;color:#475569;font-size:12px;font-weight:700;">일괄배차 단축키</label>
-          <select id="kerc-helper-shortcut" style="width:100%;height:30px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;">
-            <option value="F2">F2</option>
-            <option value="F4">F4</option>
-            <option value="F6">F6</option>
-            <option value="F7">F7</option>
-            <option value="F8">F8</option>
-            <option value="F9">F9</option>
-            <option value="CtrlEnter">Ctrl+Enter</option>
-          </select>
+          <input id="kerc-helper-shortcut" type="text" readonly value="${getShortcutLabel(getBatchDispatchShortcut())}" placeholder="클릭 후 단축키 입력" style="width:100%;height:30px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;margin-bottom:8px;padding:0 7px;cursor:pointer;">
           <label for="kerc-helper-tong-shortcut" style="display:block;margin:8px 0 4px;color:#475569;font-size:12px;font-weight:700;">통배차 단축키</label>
-          <select id="kerc-helper-tong-shortcut" style="width:100%;height:30px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;">
-            <option value="F2">F2</option>
-            <option value="F4">F4</option>
-            <option value="F6">F6</option>
-            <option value="F7">F7</option>
-            <option value="F8">F8</option>
-            <option value="F9">F9</option>
-            <option value="CtrlEnter">Ctrl+Enter</option>
-          </select>
+          <input id="kerc-helper-tong-shortcut" type="text" readonly value="${getShortcutLabel(getTongDispatchShortcut())}" placeholder="클릭 후 단축키 입력" style="width:100%;height:30px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;margin-bottom:8px;padding:0 7px;cursor:pointer;">
           <label for="kerc-helper-clear-shortcut" style="display:block;margin:8px 0 4px;color:#475569;font-size:12px;font-weight:700;">초기화 단축키</label>
-          <select id="kerc-helper-clear-shortcut" style="width:100%;height:30px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;">
-            <option value="QSE">QSE</option>
-            <option value="F2">F2</option>
-            <option value="F4">F4</option>
-            <option value="F6">F6</option>
-            <option value="F7">F7</option>
-            <option value="F8">F8</option>
-            <option value="F9">F9</option>
-            <option value="CtrlEnter">Ctrl+Enter</option>
-          </select>
+          <input id="kerc-helper-clear-shortcut" type="text" readonly value="${getShortcutLabel(getClearShortcut())}" placeholder="클릭 후 단축키 입력" style="width:100%;height:30px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;padding:0 7px;cursor:pointer;">
+          <div style="margin-top:6px;color:#94a3b8;font-size:11px;line-height:1.35;">입력칸을 클릭한 뒤 원하는 키 조합을 누르세요. 초기화는 QSE도 사용할 수 있습니다.</div>
         </div>
         <span id="kerc-helper-shortcut-label" style="display:none;">${getShortcutLabel(getBatchDispatchShortcut())}</span>
         <span id="kerc-helper-tong-shortcut-label" style="display:none;">${getShortcutLabel(getTongDispatchShortcut())}</span>
@@ -1929,21 +1940,72 @@
     selectedColorInput.addEventListener('change', () => {
       log('선택 핀 강조 색상 변경:', getSelectedColor());
     });
-    shortcutSelect.addEventListener('change', () => {
-      setBatchDispatchShortcut(shortcutSelect.value);
-      updateShortcutUi();
-      log('일괄배차 단축키 변경:', getShortcutLabel(shortcutSelect.value));
-    });
-    tongShortcutSelect.addEventListener('change', () => {
-      setTongDispatchShortcut(tongShortcutSelect.value);
-      updateShortcutUi();
-      log('통배차 단축키 변경:', getShortcutLabel(tongShortcutSelect.value));
-    });
-    clearShortcutSelect.addEventListener('change', () => {
-      setClearShortcut(clearShortcutSelect.value);
-      updateShortcutUi();
-      log('초기화 단축키 변경:', getShortcutLabel(clearShortcutSelect.value));
-    });
+
+    function bindShortcutCapture(input, setter, getter, label, defaultValue) {
+      input.addEventListener('focus', () => {
+        input.value = '키를 누르세요...';
+        input.style.borderColor = '#2563eb';
+        input.style.boxShadow = '0 0 0 2px rgba(37,99,235,0.16)';
+      });
+
+      input.addEventListener('blur', () => {
+        input.style.borderColor = '#cbd5e1';
+        input.style.boxShadow = '';
+        input.value = getShortcutLabel(getter());
+      });
+
+      input.addEventListener('keydown', event => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (typeof event.stopImmediatePropagation === 'function') {
+          event.stopImmediatePropagation();
+        }
+
+        if (event.key === 'Escape') {
+          input.blur();
+          return;
+        }
+
+        if (event.key === 'Backspace' || event.key === 'Delete') {
+          setter(defaultValue);
+          updateShortcutUi();
+          input.blur();
+          log(`${label} 단축키 기본값 복원:`, getShortcutLabel(defaultValue));
+          return;
+        }
+
+        const shortcut = getShortcutFromEvent(event);
+        if (!shortcut) return;
+
+        setter(shortcut);
+        updateShortcutUi();
+        input.blur();
+        log(`${label} 단축키 변경:`, getShortcutLabel(shortcut));
+      });
+    }
+
+    bindShortcutCapture(
+      shortcutSelect,
+      setBatchDispatchShortcut,
+      getBatchDispatchShortcut,
+      '일괄배차',
+      'F2'
+    );
+    bindShortcutCapture(
+      tongShortcutSelect,
+      setTongDispatchShortcut,
+      getTongDispatchShortcut,
+      '통배차',
+      'F8'
+    );
+    bindShortcutCapture(
+      clearShortcutSelect,
+      setClearShortcut,
+      getClearShortcut,
+      '초기화',
+      'QSE'
+    );
 
     function installMapVisualRefreshHooks() {
       if (W.__KERC_VISUAL_REFRESH_HOOKS_INSTALLED__) return;
