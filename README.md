@@ -8,7 +8,7 @@
 2. 아래 링크를 엽니다.
 3. Tampermonkey 설치 화면에서 `설치`를 누릅니다.
 
-[배출예약시스템 배차 Tool 설치](https://raw.githubusercontent.com/mkchoi-dev/kerc-tool/main/kerc-helper.user.js)
+[배출예약시스템 배차 Tool 설치](https://cdn.jsdelivr.net/gh/mkchoi-dev/kerc-tool@main/kerc-helper.user.js)
 
 ## 링크를 눌렀는데 JS 파일만 다운로드될 때
 
@@ -24,10 +24,12 @@
 6. 설치 화면이 뜨면 `설치`를 누릅니다.
 
 ```text
-https://raw.githubusercontent.com/mkchoi-dev/kerc-tool/main/kerc-helper.user.js
+https://cdn.jsdelivr.net/gh/mkchoi-dev/kerc-tool@main/kerc-helper.user.js
 ```
 
 Tampermonkey가 설치되어 있지 않은 PC에서는 Chrome/Edge가 직접 사용자 스크립트를 설치하려고 하면서 `이 웹사이트에서 앱, 확장 또는 사용자 스크립트를 추가할 수 없습니다` 같은 메시지가 표시될 수 있습니다.
+
+설치 후 자동 업데이트는 스크립트 내부의 `@updateURL` 설정에 따라 GitHub 원본 파일을 기준으로 확인합니다.
 
 ## 자동 업데이트
 
