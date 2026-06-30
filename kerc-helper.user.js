@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         배출예약시스템 배차 Tool
 // @namespace    kerc-helper
-// @version      1.0.5
+// @version      1.0.6
 // @author       myungkwon Choi
 // @description  지도 핀 드래그/올가미/우클릭 선택으로 배출예약 배차 작업을 보조합니다.
 // @match        https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
@@ -1791,26 +1791,83 @@
         .find(isVisibleElement) || document.body;
     }
 
-    function focusBatchDispatchSelect2Search(attempt = 0) {
-      const searchField = [...document.querySelectorAll('.select2-container--open .select2-search__field, .select2-search__field')]
-        .find(isVisibleElement);
+    function focusOpenSelect2SearchField() {
+      const searchField = [
+        ...document.querySelectorAll(
+          '.select2-container--open .select2-search__field, #selectBatchDispatchList .select2-search__field, .select2-search__field'
+        )
+      ].find(el => {
+        const style = getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      });
 
-      if (searchField) {
-        searchField.focus();
-        searchField.click();
-        log('일괄배차 select2 검색창 포커스 완료');
-        return true;
+      if (!searchField) return false;
+
+      searchField.removeAttribute('readonly');
+      searchField.focus();
+      searchField.click();
+
+      try {
+        searchField.setSelectionRange(searchField.value.length, searchField.value.length);
+      } catch (error) {
+        // Some input implementations do not expose selection APIs.
       }
 
-      const modal = getVisibleBatchDispatchModal();
-      const select2Target = [
-        ...modal.querySelectorAll('.select2-selection, .select2-selection__rendered, .select2-container')
-      ].find(isVisibleElement);
+      log('일괄배차 select2 검색창 포커스 완료');
+      return true;
+    }
 
-      if (select2Target) {
-        select2Target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
-        select2Target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
-        select2Target.click();
+    function openSelectBatchDispatchSelect2() {
+      const select = document.querySelector('#selectBatchDispatch');
+
+      if (!select) return false;
+
+      try {
+        if (W.$ && W.$.fn && W.$.fn.select2) {
+          const $select = W.$(select);
+
+          if (!$select.data('select2')) {
+            $select.select2({
+              dropdownParent: W.$('#selectBatchDispatchList')
+            });
+          }
+
+          $select.trigger('change.select2');
+          $select.select2('open');
+          return true;
+        }
+      } catch (error) {
+        warn('select2 API 열기 실패:', error);
+      }
+
+      const target = document.querySelector(
+        '#selectBatchDispatchList .select2-selection, #selectBatchDispatchList .select2-container, [aria-labelledby="select2-selectBatchDispatch-container"]'
+      );
+
+      if (!target) return false;
+
+      target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+      target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+      target.click();
+      return true;
+    }
+
+    function focusBatchDispatchSelect2Search(attempt = 0) {
+      if (focusOpenSelect2SearchField()) return true;
+
+      const modal = getVisibleBatchDispatchModal();
+      const opened = openSelectBatchDispatchSelect2();
+
+      if (!opened) {
+        const select2Target = [
+          ...modal.querySelectorAll('.select2-selection, .select2-selection__rendered, .select2-container')
+        ].find(isVisibleElement);
+
+        if (select2Target) {
+          select2Target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+          select2Target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+          select2Target.click();
+        }
       }
 
       if (attempt < 12) {
@@ -1831,8 +1888,16 @@
       }
 
       if (typeof W.fnSelectCompleteBatchDispatch === 'function') {
+        if (W.$) {
+          W.$('#modal_select_batch_dispatch')
+            .off('shown.bs.modal.kercFocus')
+            .one('shown.bs.modal.kercFocus', () => {
+              window.setTimeout(() => focusBatchDispatchSelect2Search(), 80);
+            });
+        }
+
         W.fnSelectCompleteBatchDispatch('select');
-        window.setTimeout(() => focusBatchDispatchSelect2Search(), 120);
+        window.setTimeout(() => focusBatchDispatchSelect2Search(), 200);
       } else if (typeof W.fnOpenModalCaralcChange === 'function') {
         W.fnOpenModalCaralcChange();
         window.setTimeout(() => focusBatchDispatchSelect2Search(), 120);
