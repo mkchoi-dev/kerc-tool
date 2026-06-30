@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         배출예약시스템 배차 Tool
 // @namespace    kerc-helper
-// @version      1.0.4
+// @version      1.0.5
 // @author       myungkwon Choi
 // @description  지도 핀 드래그/올가미/우클릭 선택으로 배출예약 배차 작업을 보조합니다.
 // @match        https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
@@ -1767,6 +1767,61 @@
       return true;
     }
 
+    function isVisibleElement(el) {
+      if (!el) return false;
+
+      const style = getComputedStyle(el);
+      const rect = el.getBoundingClientRect();
+
+      return (
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        rect.width > 0 &&
+        rect.height > 0
+      );
+    }
+
+    function getVisibleBatchDispatchModal() {
+      return [
+        '#modal_select_batch_dispatch',
+        '#modal_caralc_change',
+        '.modal.show'
+      ]
+        .map(selector => document.querySelector(selector))
+        .find(isVisibleElement) || document.body;
+    }
+
+    function focusBatchDispatchSelect2Search(attempt = 0) {
+      const searchField = [...document.querySelectorAll('.select2-container--open .select2-search__field, .select2-search__field')]
+        .find(isVisibleElement);
+
+      if (searchField) {
+        searchField.focus();
+        searchField.click();
+        log('일괄배차 select2 검색창 포커스 완료');
+        return true;
+      }
+
+      const modal = getVisibleBatchDispatchModal();
+      const select2Target = [
+        ...modal.querySelectorAll('.select2-selection, .select2-selection__rendered, .select2-container')
+      ].find(isVisibleElement);
+
+      if (select2Target) {
+        select2Target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+        select2Target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window }));
+        select2Target.click();
+      }
+
+      if (attempt < 12) {
+        window.setTimeout(() => focusBatchDispatchSelect2Search(attempt + 1), 120);
+      } else {
+        log('일괄배차 select2 검색창을 찾지 못했습니다.');
+      }
+
+      return false;
+    }
+
     function openBatchDispatchWindow() {
       writeSelectionToPage();
 
@@ -1777,8 +1832,10 @@
 
       if (typeof W.fnSelectCompleteBatchDispatch === 'function') {
         W.fnSelectCompleteBatchDispatch('select');
+        window.setTimeout(() => focusBatchDispatchSelect2Search(), 120);
       } else if (typeof W.fnOpenModalCaralcChange === 'function') {
         W.fnOpenModalCaralcChange();
+        window.setTimeout(() => focusBatchDispatchSelect2Search(), 120);
       } else {
         alert('일괄배차 모달 함수를 찾지 못했습니다. 기존 화면의 선택 일괄배차 버튼을 직접 눌러보세요.');
         log('selectMarkerList:', W.selectMarkerList);
