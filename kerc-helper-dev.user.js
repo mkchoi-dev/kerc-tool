@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         배출예약시스템 배차 Tool DEV
 // @namespace    kerc-helper-dev
-// @version      1.0.7
+// @version      1.0.8
 // @author       myungkwon Choi
 // @description  지도 핀 드래그/올가미/우클릭 선택으로 배출예약 배차 작업을 보조합니다.
 // @match        https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
@@ -24,6 +24,7 @@
   const TONG_DISPATCH_SHORTCUT_STORAGE_KEY = 'kercHelper.tongDispatchShortcut';
   const CLEAR_SHORTCUT_STORAGE_KEY = 'kercHelper.clearShortcut';
   const SELECTED_COLOR_STORAGE_KEY = 'kercHelper.selectedColor';
+  const SELECTION_MODE_STORAGE_KEY = 'kercHelper.selectionMode';
   // 회사 CI 이미지를 표시하려면 여기에 이미지 URL을 넣으세요.
   const CI_IMAGE_URL = 'https://i.postimg.cc/vTXMBjMF/02-gug-yeongmun-jwauhyeong.png';
   const RIGHT_CLICK_POINT_THRESHOLD = 5;
@@ -61,6 +62,10 @@
     return /^#[0-9a-f]{6}$/i.test(color) ? color : DEFAULT_SELECTED_COLOR;
   }
 
+  function getSelectionMode() {
+    return localStorage.getItem(SELECTION_MODE_STORAGE_KEY) === 'lasso' ? 'lasso' : 'rect';
+  }
+
   function setBatchDispatchShortcut(value) {
     localStorage.setItem(SHORTCUT_STORAGE_KEY, value);
   }
@@ -79,6 +84,10 @@
       SELECTED_COLOR_STORAGE_KEY,
       /^#[0-9a-f]{6}$/i.test(color) ? color : DEFAULT_SELECTED_COLOR
     );
+  }
+
+  function setSelectionMode(value) {
+    localStorage.setItem(SELECTION_MODE_STORAGE_KEY, value === 'lasso' ? 'lasso' : 'rect');
   }
 
   function getShortcutLabel(value) {
@@ -651,7 +660,7 @@
     let selectedOverlapCount = 0;
     let unresolvedOverlapCount = 0;
     let currentDragMode = 'replace';
-    let selectionMode = 'rect';
+    let selectionMode = getSelectionMode();
     let lassoPoints = [];
     let lastVisualRefreshAt = 0;
     let lastDragPreviewAt = 0;
@@ -1000,7 +1009,10 @@
       localStorage.removeItem(TONG_DISPATCH_SHORTCUT_STORAGE_KEY);
       localStorage.removeItem(CLEAR_SHORTCUT_STORAGE_KEY);
       localStorage.removeItem(SELECTED_COLOR_STORAGE_KEY);
+      localStorage.removeItem(SELECTION_MODE_STORAGE_KEY);
 
+      selectionMode = getSelectionMode();
+      selectionModeSelect.value = selectionMode;
       updateSelectedColorUi();
       updateShortcutUi();
       refreshSelectionVisuals();
@@ -2137,6 +2149,7 @@
       selectionModeSelect.value = selectionMode;
       selectionModeSelect.addEventListener('change', () => {
         selectionMode = selectionModeSelect.value === 'lasso' ? 'lasso' : 'rect';
+        setSelectionMode(selectionMode);
         resetLasso();
         selectBox.style.display = 'none';
         log('선택 방식 변경:', selectionMode === 'lasso' ? '올가미' : '블록');
@@ -2244,7 +2257,7 @@
           try {
             W.kakao.maps.event.addListener(W.map, eventName, () => {
               scheduleSelectionVisualRefresh();
-              scheduleSelectionVisualRefresh(300);
+              scheduleSelectionVisualRefresh(250);
             });
           } catch (error) {
             warn(`지도 이벤트 훅 실패: ${eventName}`, error);
@@ -2252,7 +2265,7 @@
         });
       }
 
-      window.setInterval(refreshSelectionVisuals, 1000);
+      window.setInterval(refreshSelectionVisuals, 500);
       log('선택 강조 유지 훅 설치 완료');
     }
 
