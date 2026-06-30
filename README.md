@@ -10,6 +10,14 @@
 
 [배출예약시스템 배차 Tool 설치](https://cdn.jsdelivr.net/gh/mkchoi-dev/kerc-tool@main/kerc-helper.user.js)
 
+## 테스트 버전
+
+테스트 중인 기능은 아래 DEV 버전으로 먼저 확인합니다.
+
+[배출예약시스템 배차 Tool DEV 설치](https://cdn.jsdelivr.net/gh/mkchoi-dev/kerc-tool@main/kerc-helper-dev.user.js)
+
+주의: 라이브 버전과 DEV 버전을 동시에 켜두면 같은 화면에서 도구가 중복 실행될 수 있습니다. 테스트할 때는 Tampermonkey 대시보드에서 라이브 버전을 잠시 비활성화하는 것을 권장합니다.
+
 ## 링크를 눌렀는데 JS 파일만 다운로드될 때
 
 브라우저가 `.user.js` 파일을 Tampermonkey로 넘기지 못한 상태입니다.
@@ -38,6 +46,13 @@ Tampermonkey가 설치되어 있지 않은 PC에서는 Chrome/Edge가 직접 사
 ```js
 // @downloadURL  https://raw.githubusercontent.com/mkchoi-dev/kerc-tool/main/kerc-helper.user.js
 // @updateURL    https://raw.githubusercontent.com/mkchoi-dev/kerc-tool/main/kerc-helper.user.js
+```
+
+DEV 버전은 별도 파일로 자동 업데이트됩니다.
+
+```js
+// @downloadURL  https://raw.githubusercontent.com/mkchoi-dev/kerc-tool/main/kerc-helper-dev.user.js
+// @updateURL    https://raw.githubusercontent.com/mkchoi-dev/kerc-tool/main/kerc-helper-dev.user.js
 ```
 
 코드를 수정해 배포할 때는 `kerc-helper.user.js` 상단의 `@version` 값을 올린 뒤 GitHub에 업로드합니다.
