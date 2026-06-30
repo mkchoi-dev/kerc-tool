@@ -12,7 +12,15 @@
 
 ## 테스트 버전
 
-테스트 중인 기능은 아래 DEV 버전으로 먼저 확인합니다.
+테스트 중인 기능은 아래 DEV 버전으로 먼저 확인합니다. DEV 버전은 다음 라이브 후보 버전 번호를 그대로 사용합니다.
+
+예:
+
+```text
+kerc-helper-dev.user.js  -> 1.0.7
+검증 완료 후
+kerc-helper.user.js      -> 1.0.7
+```
 
 [배출예약시스템 배차 Tool DEV 설치](https://cdn.jsdelivr.net/gh/mkchoi-dev/kerc-tool@main/kerc-helper-dev.user.js)
 
@@ -60,7 +68,7 @@ DEV 버전은 별도 파일로 자동 업데이트됩니다.
 예:
 
 ```js
-// @version      1.0.1
+// @version      1.0.7
 ```
 
 ## 수동 업데이트 확인

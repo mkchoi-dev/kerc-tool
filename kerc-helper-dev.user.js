@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         배출예약시스템 배차 Tool DEV
 // @namespace    kerc-helper-dev
-// @version      1.0.6-dev.1
+// @version      1.0.7
 // @author       myungkwon Choi
 // @description  지도 핀 드래그/올가미/우클릭 선택으로 배출예약 배차 작업을 보조합니다.
 // @match        https://adm.15990903.or.kr/admin/collect/selectPageListCollectMgt.do*
@@ -28,6 +28,9 @@
   const CI_IMAGE_URL = 'https://i.postimg.cc/vTXMBjMF/02-gug-yeongmun-jwauhyeong.png';
   const RIGHT_CLICK_POINT_THRESHOLD = 5;
   const DEFAULT_SELECTED_COLOR = '#ff0000';
+  const DEFAULT_BATCH_SHORTCUT = 'F2';
+  const DEFAULT_TONG_SHORTCUT = 'F8';
+  const DEFAULT_CLEAR_SHORTCUT = 'QSE';
 
   const coordVisitMap = new Map();
   const coordCustomMap = new Map();
@@ -42,15 +45,15 @@
   }
 
   function getBatchDispatchShortcut() {
-    return localStorage.getItem(SHORTCUT_STORAGE_KEY) || 'F2';
+    return localStorage.getItem(SHORTCUT_STORAGE_KEY) || DEFAULT_BATCH_SHORTCUT;
   }
 
   function getTongDispatchShortcut() {
-    return localStorage.getItem(TONG_DISPATCH_SHORTCUT_STORAGE_KEY) || 'F8';
+    return localStorage.getItem(TONG_DISPATCH_SHORTCUT_STORAGE_KEY) || DEFAULT_TONG_SHORTCUT;
   }
 
   function getClearShortcut() {
-    return localStorage.getItem(CLEAR_SHORTCUT_STORAGE_KEY) || 'QSE';
+    return localStorage.getItem(CLEAR_SHORTCUT_STORAGE_KEY) || DEFAULT_CLEAR_SHORTCUT;
   }
 
   function getSelectedColor() {
@@ -739,7 +742,10 @@
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;">
         <div style="display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0;">
           <img id="kerc-helper-ci" alt="CI" style="display:none;width:auto;height:34px;max-width:96px;object-fit:contain;box-sizing:border-box;padding:4px 5px;background:#fff;flex:0 0 auto;">
-          <div style="font-weight:800;font-size:13px;color:#0f172a;line-height:1.25;">배출예약시스템 배차 Tool</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-weight:800;font-size:13px;color:#0f172a;line-height:1.25;">배출예약시스템 배차 Tool</span>
+            <span style="display:inline-flex;align-items:center;height:17px;padding:0 5px;border-radius:4px;background:#f97316;color:#fff;font-size:10px;font-weight:900;letter-spacing:.2px;">DEV</span>
+          </div>
         </div>
         <button id="kerc-helper-collapse" class="kerc-collapse-button" type="button" title="접기" aria-label="접기" aria-expanded="true">
           <span class="kerc-chevron" aria-hidden="true"></span>
@@ -771,6 +777,8 @@
           <label for="kerc-helper-clear-shortcut" style="display:block;margin:8px 0 4px;color:#475569;font-size:12px;font-weight:700;">초기화 단축키</label>
           <input id="kerc-helper-clear-shortcut" type="text" readonly value="${getShortcutLabel(getClearShortcut())}" placeholder="클릭 후 단축키 입력" style="width:100%;height:30px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#111827;padding:0 7px;cursor:pointer;">
           <div style="margin-top:6px;color:#94a3b8;font-size:11px;line-height:1.35;">입력칸을 클릭한 뒤 원하는 키 조합을 누르세요. 초기화는 QSE도 사용할 수 있습니다.</div>
+          <div id="kerc-helper-shortcut-warning" style="display:none;margin-top:8px;padding:6px 7px;border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;border-radius:6px;font-size:11px;line-height:1.35;font-weight:700;"></div>
+          <button id="kerc-helper-reset-settings" type="button" style="width:100%;height:30px;margin-top:8px;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;border-radius:6px;font-size:12px;font-weight:800;cursor:pointer;">설정 기본값 복원</button>
         </div>
         <span id="kerc-helper-shortcut-label" style="display:none;">${getShortcutLabel(getBatchDispatchShortcut())}</span>
         <span id="kerc-helper-tong-shortcut-label" style="display:none;">${getShortcutLabel(getTongDispatchShortcut())}</span>
@@ -906,6 +914,8 @@
     const shortcutSelect = panel.querySelector('#kerc-helper-shortcut');
     const tongShortcutSelect = panel.querySelector('#kerc-helper-tong-shortcut');
     const clearShortcutSelect = panel.querySelector('#kerc-helper-clear-shortcut');
+    const shortcutWarningEl = panel.querySelector('#kerc-helper-shortcut-warning');
+    const resetSettingsButton = panel.querySelector('#kerc-helper-reset-settings');
     const shortcutLabelEl = panel.querySelector('#kerc-helper-shortcut-label');
     const tongShortcutLabelEl = panel.querySelector('#kerc-helper-tong-shortcut-label');
     const openButton = panel.querySelector('#kerc-helper-open');
@@ -932,6 +942,38 @@
       selectedColorInput.value = color;
     }
 
+    function getShortcutConflicts() {
+      const entries = [
+        ['일괄배차', normalizeShortcutValue(getBatchDispatchShortcut())],
+        ['통배차', normalizeShortcutValue(getTongDispatchShortcut())],
+        ['초기화', normalizeShortcutValue(getClearShortcut())]
+      ];
+
+      const groups = new Map();
+      entries.forEach(([label, value]) => {
+        if (!value) return;
+        if (!groups.has(value)) groups.set(value, []);
+        groups.get(value).push(label);
+      });
+
+      return [...groups.entries()]
+        .filter(([, labels]) => labels.length > 1)
+        .map(([value, labels]) => `${labels.join(' / ')}: ${getShortcutLabel(value)}`);
+    }
+
+    function updateShortcutWarningUi() {
+      const conflicts = getShortcutConflicts();
+
+      if (!conflicts.length) {
+        shortcutWarningEl.style.display = 'none';
+        shortcutWarningEl.textContent = '';
+        return;
+      }
+
+      shortcutWarningEl.textContent = `단축키 충돌: ${conflicts.join(', ')}`;
+      shortcutWarningEl.style.display = 'block';
+    }
+
     function updateShortcutUi() {
       const shortcut = getBatchDispatchShortcut();
       const label = getShortcutLabel(shortcut);
@@ -950,6 +992,19 @@
       const clearLabel = getShortcutLabel(clearShortcut);
       clearShortcutSelect.value = clearShortcut;
       clearButton.textContent = `초기화(${clearLabel})`;
+      updateShortcutWarningUi();
+    }
+
+    function resetHelperSettings() {
+      localStorage.removeItem(SHORTCUT_STORAGE_KEY);
+      localStorage.removeItem(TONG_DISPATCH_SHORTCUT_STORAGE_KEY);
+      localStorage.removeItem(CLEAR_SHORTCUT_STORAGE_KEY);
+      localStorage.removeItem(SELECTED_COLOR_STORAGE_KEY);
+
+      updateSelectedColorUi();
+      updateShortcutUi();
+      refreshSelectionVisuals();
+      log('설정 기본값 복원 완료');
     }
 
     function setPanelCollapsed(collapsed) {
@@ -1817,7 +1872,31 @@
       return true;
     }
 
-    function openSelectBatchDispatchSelect2() {
+    function logSelect2FocusDiagnostics(attempt, stage, extra = {}) {
+      const select = document.querySelector('#selectBatchDispatch');
+      const list = document.querySelector('#selectBatchDispatchList');
+      const openContainer = document.querySelector('.select2-container--open');
+      const searchFields = document.querySelectorAll('.select2-search__field');
+
+      log('DEV select2 포커스 진단:', {
+        attempt,
+        stage,
+        hasJquery: Boolean(W.$),
+        hasSelect2Plugin: Boolean(W.$ && W.$.fn && W.$.fn.select2),
+        hasSelect: Boolean(select),
+        optionCount: select ? select.options.length : 0,
+        hasSelect2Data: Boolean(W.$ && select && W.$(select).data('select2')),
+        hasList: Boolean(list),
+        hasOpenContainer: Boolean(openContainer),
+        searchFieldCount: searchFields.length,
+        activeElement: document.activeElement
+          ? `${document.activeElement.tagName || ''}${document.activeElement.id ? `#${document.activeElement.id}` : ''}${document.activeElement.className ? `.${String(document.activeElement.className).replace(/\s+/g, '.')}` : ''}`
+          : '',
+        ...extra
+      });
+    }
+
+    function openSelectBatchDispatchSelect2(attempt = 0) {
       const select = document.querySelector('#selectBatchDispatch');
 
       if (!select) return false;
@@ -1834,6 +1913,7 @@
 
           $select.trigger('change.select2');
           $select.select2('open');
+          logSelect2FocusDiagnostics(attempt, 'select2-api-open');
           return true;
         }
       } catch (error) {
@@ -1855,8 +1935,12 @@
     function focusBatchDispatchSelect2Search(attempt = 0) {
       if (focusOpenSelect2SearchField()) return true;
 
+      if (attempt === 0 || attempt === 4 || attempt === 8 || attempt === 12) {
+        logSelect2FocusDiagnostics(attempt, 'before-open');
+      }
+
       const modal = getVisibleBatchDispatchModal();
-      const opened = openSelectBatchDispatchSelect2();
+      const opened = openSelectBatchDispatchSelect2(attempt);
 
       if (!opened) {
         const select2Target = [
@@ -1873,6 +1957,7 @@
       if (attempt < 12) {
         window.setTimeout(() => focusBatchDispatchSelect2Search(attempt + 1), 120);
       } else {
+        logSelect2FocusDiagnostics(attempt, 'failed-final', { opened });
         log('일괄배차 select2 검색창을 찾지 못했습니다.');
       }
 
@@ -2065,6 +2150,10 @@
     selectedColorInput.addEventListener('change', () => {
       log('선택 핀 강조 색상 변경:', getSelectedColor());
     });
+    resetSettingsButton.addEventListener('click', () => {
+      if (!confirm('단축키와 강조 색상 설정을 기본값으로 되돌릴까요?')) return;
+      resetHelperSettings();
+    });
 
     function bindShortcutCapture(input, setter, getter, label, defaultValue) {
       input.addEventListener('focus', () => {
@@ -2115,21 +2204,21 @@
       setBatchDispatchShortcut,
       getBatchDispatchShortcut,
       '일괄배차',
-      'F2'
+      DEFAULT_BATCH_SHORTCUT
     );
     bindShortcutCapture(
       tongShortcutSelect,
       setTongDispatchShortcut,
       getTongDispatchShortcut,
       '통배차',
-      'F8'
+      DEFAULT_TONG_SHORTCUT
     );
     bindShortcutCapture(
       clearShortcutSelect,
       setClearShortcut,
       getClearShortcut,
       '초기화',
-      'QSE'
+      DEFAULT_CLEAR_SHORTCUT
     );
 
     function installMapVisualRefreshHooks() {
